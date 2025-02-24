@@ -1,0 +1,438 @@
+------Initial Installation------ (for RPi/OPi)
+sudo apt update && sudo apt upgrade -y 
+sudo apt install -y lm-sensors sysbench automake autoconf pkg-config libcurl4-openssl-dev libjansson-dev libssl-dev libgmp-dev make g++ git screen build-essential libssl-dev libffi-dev python3-dev cargo python3 python3-pip git python3-pil python3-pil.imagetk neofetch avahi-daemon aircrack-ng reaver bully pixiewps wifite hashcat hcxdumptool hcxtools macchanger \
+    python3-dev cargo pkg-config
+
+python3-numpy python3-scipy python3-matplotlib
+
+* Rename/Change User / Add to Group / Add to Sudo
+usermod -l maws -d /home/maws -m <dietpi or orangepi>
+sudo usermod -a -G adm,dialout,cdrom,sudo,audio,video,plugdev,games,users,input,netdev,gpio,i2c,spi maws
+sudo visudo /etc/sudoers.d/maws ---> maws ALL=(ALL:ALL) NOPASSWD: ALL
+
+https://github.com/hacker3983/pyrit-installer
+https://github.com/warecrer/hcxpcaptool
+
+------Oh-My-Bash------ (for RPi/OPi)
+Link: https://github.com/ohmybash/oh-my-bash
+
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)" --prefix=/usr/local
+sudo nano /usr/local/share/oh-my-bash/bashrc
+cp /usr/local/share/oh-my-bash/bashrc ~/.bashrc
+
+------CasaOS------ (for OPi)
+Link: https://www.casaos.io/
+
+curl -fsSL https://get.casaos.io | sudo bash
+
+------Duino Coin Miner------ (for RPi)
+Link: https://github.com/revoxhere/duino-coin
+
+git clone https://github.com/revoxhere/duino-coin
+cd duino-coin
+python3 -m pip install -r requirements.txt
+
+*miner.sh
+#!/bin/sh -e
+echo Starting Duino-Coin Miner, type screen -r DUCO or screen -x to view
+echo Press CTRL-A-D to minimized and CTRL-C to exit or quit the Miner.
+screen -dmS DUCO bash -c "cd ~/duino-coin; python3 PC_Miner.py"
+exit 0
+
+for autostart:
+crontab -e ---> @reboot screen -dmS DUCO bash -c "cd ~/duino-coin; python3 PC_Miner.py"
+
+------CPU Miner------ (for RPi)
+Link: https://steemit.com/bytecoin/@pihasher/mining-bytecoin-on-a-usd10-raspberry-pi-zero
+
+sudo git clone https://github.com/tpruvot/cpuminer-multi
+cd cpuminer-multi
+sudo ./autogen.sh
+sudo ./configure CFLAGS="-Ofast -mtune=arm1176jzf-s -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp" CXXFLAGS="-Ofast -mtune=arm1176jzf-s -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp" --with-crypto --with-curl
+sudo ./build-linux-arm.sh
+
+------Portainer------ (for RPi)
+Link: https://pi-hosted.com/ | https://github.com/pi-hosted/pi-hosted
+
+* install_portainer.sh (for OPi)
+#!/bin/bash
+
+function error {
+  echo -e "\\e[91m$1\\e[39m"
+  exit 1
+}
+
+function check_internet() {
+  printf "Checking if you are online..."
+  wget -q --spider http://github.com
+  if [ $? -eq 0 ]; then
+    echo "Online. Continuing."
+  else
+    error "Offline. Go connect to the internet then run the script again."
+  fi
+}
+
+check_internet
+
+sudo docker pull portainer/portainer-ee:latest || error "Failed to pull latest Portainer docker image!"
+sudo docker run -d -p 9000:9000 -p 9443:9443 --name=portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ee:latest --logo "https://pi-hosted.com/pi-hosted-logo.png" || error "Failed to run Portainer docker image!"
+
+sudo bash install_portainer.sh
+
+Portainer Business Edition License Key
+2-/ApDNxyIblWvVqQ5hbTGOsCtmrIRSw226hrl0OunPcFvWYJP5po0XocI8MmW2ne1jmSKKc3+d+spiIFOEPv/tw==
+
+------Pihole and Unbound with Docker Compose------
+Link: https://github.com/willy-wagtail/raspberrypi-pihole
+
+------SH Scripts------
+# pi-temp.sh
+#!/bin/bash
+TEMP_UNIT="Celsius"
+function get_color() {
+    temp=$1
+    if [ $temp -lt 40 ]; then
+        echo -e "\e[32m"  # Green
+    elif [ $temp -ge 40 ] && [ $temp -lt 50 ]; then
+        echo -e "\e[34m"  # Blue
+    else
+        echo -e "\e[31m"  # Red
+    fi
+}
+
+function show_temperature() {
+    temp=$(cat /sys/class/thermal/thermal_zone0/temp)
+    temp_celsius=$((temp / 1000))
+    temp_fahrenheit=$(echo "scale=2; ($temp_celsius*9/5) + 32" | bc)
+    color=$(get_color $temp_celsius)
+    if [ "$TEMP_UNIT" == "Celsius" ]; then
+        echo -e "CPU Temperature: ${color}${temp_celsius}°C\e[0m"
+    else
+        echo -e "CPU Temperature: ${color}${temp_fahrenheit}°F\e[0m"
+    fi
+}
+
+function toggle_temperature_unit() {
+    if [ "$TEMP_UNIT" == "Celsius" ]; then
+        TEMP_UNIT="Fahrenheit"
+    else
+        TEMP_UNIT="Celsius"
+    fi
+}
+
+while true; do
+    clear
+    echo "Raspberry Pi CPU Temperature Monitor"
+    echo "-----------------------------------"
+    show_temperature
+    echo "-----------------------------------"
+    echo "Press 'C' to toggle Celsius/Fahrenheit"
+    echo "Press 'Q' to exit"
+    read -n 1 -s choice
+
+    case $choice in
+        c|C)
+            toggle_temperature_unit
+            ;;
+        q|Q)
+            echo "Exiting..."
+            exit 0
+            ;;
+        *)
+            # Do nothing for other key presses
+            ;;
+    esac
+
+    sleep 2  # Adjust the sleep interval as needed
+done
+
+# pi-software.sh (for RPi/OPi)
+#!/bin/bash
+
+function show_help {
+    echo "Usage: pi-software.sh [option]"
+    echo "Options:"
+    echo "   -h, --help: Show this help message and exit."
+    echo "   -u, --update: Update the package list."
+    echo "   -g, --upgrade: Upgrade the packages."
+    echo "   -i, --install [package]: Install a package."
+    echo "   -a, --autopurge: Automatically purge removed packages."
+}
+
+while [[ $# -gt 0 ]]; do
+    key="$1"
+
+    case $key in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -u|--update)
+            shift
+            sudo apt update
+            ;;
+        -g|--upgrade)
+            shift
+            sudo apt upgrade -y
+            ;;
+        -i|--install)
+            shift
+            if [[ $# -eq 0 ]]; then
+                echo "Please provide a package name."
+                exit 1
+            fi
+            sudo apt install -y "$1"
+            shift
+            ;;
+        -a|--autopurge)
+            shift
+            sudo apt autopurge -y
+            ;;
+        *)
+            echo "Unknown option: $key"
+            echo "Run 'pi-software.sh --help' for more information."
+            exit 1
+            ;;
+    esac
+done
+
+if [[ $# -eq 0 ]]; then
+    clear
+    while true; do
+        echo "-------------------------------------"
+        echo "   Raspberry Pi Software Menu "
+        echo "-------------------------------------"
+        echo "1. Update Package List"
+        echo "2. Upgrade Packages"
+        echo "3. Install Package"
+        echo "4. Automatically Purge Removed Packages"
+        echo "5. Quit"
+        echo "-------------------------------------"
+        read -p "Please enter your choice: " choice
+        case $choice in
+            1) sudo apt update ;;
+            2) sudo apt upgrade -y ;;
+            3) read -p "Please enter the package name: " package
+            sudo apt install -y "$package" ;;
+            4) sudo apt autopurge -y ;;
+            5) exit ;;
+            *) echo "Invalid choice. Please try again." ;;
+        esac
+    done
+fi
+
+# pi-power.sh (for RPi/OPi)
+#!/bin/bash
+
+function show_help {
+    echo "Usage: pi-power.sh [option]"
+    echo "Options:"
+    echo "   -h, --help: Show this help message and exit."
+    echo "   -s, --shutdown: Shutdown the Raspberry Pi Zero."
+    echo "   -r, --reboot: Reboot the Raspberry Pi Zero."
+}
+
+while [[ $# -gt 0 ]]; do
+    key="$1"
+
+    case $key in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -s|--shutdown)
+            shift
+            shutdown -h now
+            ;;
+        -r|--reboot)
+            shift
+            reboot
+            ;;
+        *)
+            echo "Unknown option: $key"
+            echo "Run 'pi-power.sh --help' for more information."
+            exit 1
+            ;;
+    esac
+done
+
+if [[ $# -eq 0 ]]; then
+    clear
+    while true; do
+        echo "-------------------------------------"
+        echo "   Raspberry Pi Zero Power Menu "
+        echo "-------------------------------------"
+        echo "1. Shutdown"
+        echo "2. Reboot"
+        echo "3. Quit"
+        echo "-------------------------------------"
+        read -p "Please enter your choice: " choice
+        case $choice in
+            1) shutdown -h now ;;
+            2) reboot ;;
+            3) exit ;;
+            *) echo "Invalid choice. Please try again." ;;
+        esac
+    done
+fi
+
+# pi-monitor.sh (for RPi)
+#!/bin/bash
+#
+# Voltage drops caused by average USB cables can cause all sorts of instabilities
+# and data corruption. The main CPU on the Raspberry monitors the voltage drops and
+# acts on accordingly. Heavy voltage drops directly on startup lowers the Vcore to
+# CPU cores and caps CPU clock speed. If voltage drops aren't that severe a more
+# flexible approach is used and gain performance back after periods of heavy load.
+#
+# The monitoring script prints SoC temperature, sysfs clockspeed (and real clock
+# speed if differing), 'vcgencmd get_throttled' bits and core voltage.
+# To interpret the 'get_throttled' bits please refer to this.
+# On RPi 3 descriptions for bits 1/2 and 17/18 should be exchanged!
+#
+# 0: under-voltage
+# 1: arm frequency capped
+# 2: currently throttled
+# --
+# 16: under-voltage has occurred
+# 17: arm frequency capped has occurred
+# 18: throttling has occurred
+#
+# Background info: http://preview.tinyurl.com/mmwjfwy
+#                  http://tech.scargill.net/a-question-of-lifespan/
+#
+# RPi Zero W
+# 51.9'C 1000 MHz 0000000000000000000 1.3500V
+#
+# Note: the red bits should stay '0'
+
+echo -e "To stop simply press [ctrl]-[c]\n"
+Maxfreq=$(( $(awk '{printf ("%0.0f",$1/1000); }'  </sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq) -15 ))
+while true ; do
+	Health=$(perl -e "printf \"%19b\n\", $(vcgencmd get_throttled | cut -f2 -d=)")
+	Temp=$(vcgencmd measure_temp | cut -f2 -d=)
+	RealClockspeed=$(vcgencmd measure_clock arm | awk -F"=" '{printf ("%0.0f",$2/1000000); }' )
+	SysFSClockspeed=$(awk '{printf ("%0.0f",$1/1000); }' </sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq)
+	CoreVoltage=$(vcgencmd measure_volts | cut -f2 -d= | sed 's/000//')
+	if [ ${RealClockspeed} -ge ${Maxfreq} ]; then
+		echo -e "${Temp}$(printf "%5s" ${SysFSClockspeed}) MHz $(printf "%019d" ${Health}) ${CoreVoltage}"
+	else
+		echo -e "${Temp}$(printf "%5s" ${SysFSClockspeed})/$(printf "%4s" ${RealClockspeed}) MHz $(printf "%019d" ${Health}) ${CoreVoltage}"
+	fi
+	sleep 5
+done
+
+---------------------------------------------------------------------------------
+
+# usb-in.sh (for RPi)
+#!/bin/sh -e
+echo "Mounting USB Storage..."
+sudo /sbin/modprobe g_multi file=/usbspace.bin stall=0 removable=1
+exit 0
+
+# usb-out.sh (for RPi)
+#!/bin/sh -e
+echo "Unmounting USB Storage..."
+sudo /sbin/modprobe g_multi -r
+exit 0
+
+---------------------------------------------------------------------------------
+
+#Pi-Hole
+https://pi-hole.net/
+
+#pihole-teleporter.sh (for RPi)
+#!/bin/bash
+
+# The backup directory where the backup will be stored.
+# You need to replace 'your-backup-directory' with the actual directory.
+BACKUP_DIR="/mnt/pihole"
+
+# Get the latest backup from the pihole system.
+# Add timestamp to the backup file name.
+pihole -a -t $BACKUP_DIR/pihole_backup_$(date +%Y%m%d_%H%M%S).tar.gz
+
+# Print a message indicating that the backup has been created.
+echo "Pi-hole backup created successfully."
+
+crontab -e ----> 0 0 * * 1 /path/to/your/script.sh
+
+#Pi-Hole Gravity Updater
+https://github.com/jessedp/pihole5-list-tool
+https://github.com/jacklul/pihole-updatelists#configuration
+
+for Pwnagotchi
+deco-M4R	192.168.1.4	CC:32:E5:5A:07:70
+deco-M4R	192.168.1.5	CC:32:E5:5A:06:04
+deco-M4R	192.168.1.6	CC:32:E5:5A:11:34
+Secret WiFi			5C:A6:E6:C2:D1:67
+TLC-Office
+
+BT: E8:5A:8B:E7:B8:92
+
+
+main.whitelist = [
+ "Deco M4 Setup",
+ "TLC-Office",
+ "Secret WiFi",
+ "90:09:D0:34:BE:94",
+ "2C:F0:5D:3D:BE:36",
+ "CC:32:E5:5A:07:70",
+ "CC:32:E5:5A:06:04",
+ "CC:32:E5:5A:11:34",
+ "BC:33:29:B6:C3:F2",
+ "A4:EF:15:76:1D:AE",
+ "78:E3:6D:64:30:C0",
+ "24:D7:EB:58:49:84",
+ "24:D7:EB:59:43:64",
+ "D8:3A:DD:A3:87:AD",
+ "B8:27:EB:4C:0D:8F",
+ "5C:A6:E6:C2:D1:67",
+]
+
+
+main.plugins.grid.exclude = [
+ "Deco M4 Setup",
+ "DecoM4Setup",
+ "Network 404",
+ "Hamrol Dome",
+ "TLC-Office",
+ "Secret WiFi",
+ "90:09:D0:34:BE:94",
+ "2C:F0:5D:3D:BE:36",
+ "CC:32:E5:5A:07:70",
+ "CC:32:E5:5A:06:04",
+ "CC:32:E5:5A:11:34",
+ "BC:33:29:B6:C3:F2",
+ "A4:EF:15:76:1D:AE",
+ "78:E3:6D:64:30:C0",
+ "24:D7:EB:58:49:84",
+ "24:D7:EB:59:43:64",
+ "D8:3A:DD:A3:87:AD",
+ "B8:27:EB:4C:0D:8F",
+ "5C:A6:E6:C2:D1:67",
+]
+
+
+
+
+
+
+
+
+Deco M4 Setup
+TLC-Office
+Secret WiFi
+90:09:D0:34:BE:94
+2C:F0:5D:3D:BE:36
+CC:32:E5:5A:07:70
+CC:32:E5:5A:06:04
+CC:32:E5:5A:11:34
+BC:33:29:B6:C3:F2
+A4:EF:15:76:1D:AE
+78:E3:6D:64:30:C0
+24:D7:EB:58:49:84
+24:D7:EB:59:43:64
+D8:3A:DD:A3:87:AD
+B8:27:EB:4C:0D:8F
+5C:A6:E6:C2:D1:67
